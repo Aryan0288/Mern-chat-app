@@ -1,15 +1,22 @@
 
 import axios from 'axios';
-import Register from './Register';
+import { UserContextProvider } from './UserContext';
+import Routes from './Routes';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   axios.defaults.baseURL='http://localhost:4040';
   axios.defaults.withCredentials=true;
 
   return (
-    <div className="">
-      <Register/>
+    <div className='select-none'>
+    <UserContextProvider>
+      <Routes/>
+      <ToastContainer />
+    </UserContextProvider>
     </div>
+    
   );
 }
 
