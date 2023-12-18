@@ -5,6 +5,9 @@ const dotenv = require('dotenv');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const ws = require('ws');
+
+const Message = require('./models/Message');
 const User = require('./models/User');
 const MONGO_URL = 'mongodb+srv://chatapp:dpJbj0tFUrqVcQU6@cluster0.ttefoc8.mongodb.net/?retryWrites=true&w=majority';
 
@@ -54,21 +57,60 @@ app.get('/test', (req, res) => {
 });
 console.log("Hello ji I am a Index.js file in api folder");
 
+async function getUserDataFromRequest(req) {
+    return new Promise((resolve, reject) => {
+        const token = req.cookies?.token;
+        if (token) {
+            jwt.verify(token, jwtSecret, {}, (err, userData) => {
+                if (err) throw err;
+                resolve(userData);
+            });
+        }
+        else {
+            reject('no token');
+        }
+    })
+}
+
+app.get('/messages/:userId', async (req, res) => {
+    const {userId}=req.params;
+    const userData= await getUserDataFromRequest(req);
+    const ourUserId=userData.userId;
+
+    const messages=await Message.find({
+        sender:{$in:[userId,ourUserId]},
+        recipient:{$in:[userId,ourUserId]},
+    }).sort({createdAt:-1})
+
+    res.json(messages);
+})
+
 // create profile 
 app.get('/profile', (req, res) => {
-    console.log("I am in profile...post");
-    const { token } = req.cookies;
-    jwt.verify(token, jwtSecret, {}, (err, userData) => {
-        if (err) throw err;
-        res.json(userData);
-    });
+    const token = req.cookies?.token;
+    if (token) {
+        jwt.verify(token, jwtSecret, {}, (err, userData) => {
+            if (err) throw err;
+            res.json(userData);
+        });
+    }else{
+        res.status(401).json('no token');
+    }
 })
 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        const foundUser = await User.findOne({ $or: [{ username }, { email: username }] });
+        // const foundUser = await User.findOne({ $or: [{ username }, { email: username }] });
+        let foundUser;
+        // Check if the entered username is an email address
+        if (username.includes('@')) {
+            foundUser = await User.findOne({ email: username });
+        } else {
+            foundUser = await User.findOne({ username });
+        }
+
         if (foundUser) {
             const passOk = bcrypt.compareSync(password, foundUser.password);
             if (passOk) {
@@ -79,6 +121,7 @@ app.post('/login', async (req, res) => {
                         email: foundUser.email,
                     });
                 })
+                // console.log("the username is "+foundUser.username);
             } else {
                 res.status(401).json({ message: 'Invalid password' });
             }
@@ -130,4 +173,71 @@ app.post('/register', async (req, res) => {
 })
 
 
-app.listen(4040);
+const server = app.listen(4040);
+
+const wss = new ws.WebSocketServer({ server });
+wss.on('connection', async (connection, req) => {
+
+    // read username and id from the cookie for this connection
+    const cookies = req.headers.cookie;
+    if (cookies) {
+        const tokenCookieString = cookies.split(';').find(str => str.startsWith('token='));
+        if (tokenCookieString) {
+            const token = tokenCookieString.split('=')[1];
+            if (token) {
+                jwt.verify(token, jwtSecret, {}, async (err, UserData) => {
+                    if (err) throw err;
+
+                    const { userId, username } = UserData;
+
+                    try {
+                        const user = await User.findById(userId);
+                        if (user) {
+                            connection.userId = userId;
+                            connection.username = user.username; // Use the actual username from the database
+                            // console.log("The username is " + user.username);
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    }
+
+                    // connection.userId=userId;
+                    // connection.username=username;
+                    // console.log("the username is "+username);
+                })
+            }
+        }
+    }
+
+
+    connection.on('message', async (message) => {
+        const messageData = JSON.parse(message.toString());
+
+        const { recipient, text } = messageData;
+        if (recipient && text) {
+            const MessageDoc = await Message.create({
+                sender: connection.userId,
+                recipient,
+                text,
+            });
+
+            [...wss.clients]
+                .filter(c => c.userId === recipient)
+                .forEach(c => c.send(JSON.stringify({
+                    text,
+                    sender: connection.userId,
+                    recipient,
+                    _id: MessageDoc._id,
+                })));
+        }
+    });
+
+
+    // notify everyone about online people (when someone connects)
+    [...wss.clients].forEach(client => {
+        client.send(JSON.stringify({
+            online: [...wss.clients].map(c => ({ userId: c.userId, username: c.username })),
+        }))
+    })
+
+});
