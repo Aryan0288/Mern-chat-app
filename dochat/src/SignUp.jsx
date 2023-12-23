@@ -83,6 +83,7 @@ const SignUp = ({ setIsLoggedIn }) => {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder='UserName'
                 value={username}
+                autoComplete='new-name'
               />
             </label>
 
@@ -101,6 +102,7 @@ const SignUp = ({ setIsLoggedIn }) => {
                     onChange={e => setEmail(e.target.value)}
                     placeholder='Enter Your Email Address'
                     value={email}
+                    autoComplete='new-email'
                   />
                 </label>
               )
@@ -125,6 +127,7 @@ const SignUp = ({ setIsLoggedIn }) => {
                 placeholder='Enter Your Password'
                 required
                 onChange={e => setPassword(e.target.value)}
+                autoComplete='new-password'
               />
               <span className='absolute right-2 text-[22px] top-10 cursor-pointer'
                 onClick={() => setpass((prev) => !prev)}>
