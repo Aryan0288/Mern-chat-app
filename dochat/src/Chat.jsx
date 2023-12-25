@@ -14,6 +14,8 @@ export default function Chat() {
     const [selectedUserId, setSelectedUserId] = useState(null);
     const [newMessageText, setNewMessageText] = useState('');
     const [messages, setMessages] = useState([]);
+    const [messageId, setMessagesId] = useState("");
+
     const messagesBoxRef = useRef();
     const { username, id, setId, setUsername } = useContext(UserContext);
 
@@ -39,7 +41,6 @@ export default function Chat() {
 
             if (username) {
                 people[userId] = username;
-                console.log(" the info of people : " + people[userId])
             }
         });
         setOnlinePeople(people);
@@ -67,7 +68,8 @@ export default function Chat() {
     }
 
     // Handle the send files
-    function sendMessage(ev, file = null) {
+    async function sendMessage(ev, file = null) {
+        
         if (ev) ev.preventDefault();
 
         ws.send(JSON.stringify({
@@ -98,6 +100,7 @@ export default function Chat() {
             }]));
         }
 
+
     }
 
     // file send function
@@ -111,6 +114,36 @@ export default function Chat() {
             })
         }
     }
+
+    async function getFetch() {
+        console.log("I am in fetch fnc");
+        const currentUserId = selectedUserId;
+        console.log("deleted");
+    }
+    
+    useEffect(()=>{
+        console.log("I am in useEffect getfetch");
+        getFetch();
+    },[sendMessage]);
+    
+    
+    const handleDelete = async (mess) => {
+        
+        try {
+            
+            setMessagesId(mess._id);
+            console.log(messages.length);
+            const filteredPeople = messages.filter((item) => item._id !== mess._id);
+            setMessages(filteredPeople);
+            // sendMessage(null,null);
+            const response = await axios.delete(`/messages/${mess._id}`);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+
+
 
 
     useEffect(() => {
@@ -139,7 +172,6 @@ export default function Chat() {
         });
     }, [id, onlinePeople]);
 
-
     useEffect(() => {
         if (selectedUserId) {
             axios.get('/messages/' + selectedUserId).then(res => {
@@ -151,7 +183,6 @@ export default function Chat() {
 
     const onlinePeopleExclOurUser = { ...onlinePeople };
     delete onlinePeopleExclOurUser[id];
-
     const messagesWithoutDupes = uniqBy(messages, '_id');
     return (
         <div className='h-screen flex'>
@@ -217,19 +248,23 @@ export default function Chat() {
 
                                 {messagesWithoutDupes.map(message => (
                                     <div key={message._id} className={(message.sender === id ? 'text-right' : 'text-left')}>
-                                        <div className={"inline-block py-[5px] px-4 my-3 rounded-md text-sm cursor-text " + (message.sender === id ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white')}
+                                        <div className={"inline-block text-[13px] py-1  px-4 my-3 rounded-md text-sm cursor-text " + (message.sender === id ? 'bg-blue-600 max-w-[64%] text-white' : 'bg-gray-700 text-white mb-2')}
                                         >
-                                            {message.text}
-                                            {
-                                                message.file && (
-                                                    <div>
-                                                        <a target="_blank" href={axios.defaults.baseURL + '/uploads/' + message.file}>
-                                                            {/* <a href="https://www.google.com"> */}
-                                                            {message.file}
-                                                        </a>
-                                                    </div>
-                                                )
-                                            }
+                                            <div className='flex py-[6x]  items-center justify-center text-left'>
+                                                <span className='cursor-pointer text-black ' onClick={() => handleDelete(message)}>delete</span>
+                                                {message.text}
+                                            </div>
+                                            <div>
+                                                {
+                                                    message.file && (
+                                                        <div>
+                                                            <a target="_blank" className='flex items-center justify-center ' href={axios.defaults.baseURL + '/uploads/' + message.file}>
+                                                                {message.file}
+                                                            </a>
+                                                        </div>
+                                                    )
+                                                }
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

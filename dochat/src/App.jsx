@@ -10,7 +10,7 @@ function App() {
   axios.defaults.withCredentials=true;
 
   return (
-    <div className='select-none'>
+    <div className=''>
     <UserContextProvider>
       <Routes/>
       <ToastContainer />

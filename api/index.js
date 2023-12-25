@@ -74,11 +74,19 @@ async function getUserDataFromRequest(req) {
     })
 }
 
+app.get("/", async (req,res)=>{
+    console.log("i am in /");
+    const data=await User.find({});
+    // console.log(data);
+    res.json({success:true,data:data});
+    // res.json("hello");
+})
+
 app.get('/messages/:userId', async (req, res) => {
     const { userId } = req.params;
     const userData = await getUserDataFromRequest(req);
     const ourUserId = userData.userId;
-
+  
     const messages = await Message.find({
         sender: { $in: [userId, ourUserId] },
         recipient: { $in: [userId, ourUserId] },
@@ -86,6 +94,34 @@ app.get('/messages/:userId', async (req, res) => {
 
     res.json(messages);
 })
+
+app.delete('/messages/:id', async (req, res) => {
+    const messageId = req.params.id;
+    console.log("id : " + messageId);  
+
+    // const data=await Message.findByIdAndDelete({_id:messageId});
+    // res.send({success:true,message:"data delete succesfully",data:data});
+    
+    
+    try {
+        // Find the message by ID and remove it
+        //   const deletedMessage = await Message.findByIdAndRemove(messageId);
+        const deletedMessage = await Message.findOneAndDelete({ _id: messageId });
+
+        if (!deletedMessage) {
+            return res.status(404).json({ error: 'Message not found' });
+        }
+
+        // Successful deletion
+        //   res.json({ message: 'Message deleted successfully' });
+        console.log("message deleted");
+        res.status(200).json({ message: 'Message deleted successfully', deletedMessage });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+}); 
+ 
 
 app.get('/people', async (req, res) => {
     const users = await User.find({}, { '_id': 1, username: 1 });
@@ -268,8 +304,9 @@ wss.on('connection', (connection, req) => {
             fs.writeFile(path, bufferData, () => {
                 console.log("file saved : " + path);
                 // console.log("New Date : " + d.getDate() + "/" + d.getDay() + "/" + d.getFullYear());
-                console.log("time "+d.getTime());
+                console.log("time " + d.getTime());
                 console.log(file.name);
+                // console.log("bufferData = "+ file.data);
             })
         }
 
@@ -289,7 +326,7 @@ wss.on('connection', (connection, req) => {
                     recipient,
                     file: file ? file.name : null,
                     _id: MessageDoc._id,
-            })));
+                })));
             console.log("file created succesfully");
         }
     });
