@@ -77,7 +77,6 @@ async function getUserDataFromRequest(req) {
 app.get("/", async (req,res)=>{
     console.log("i am in /");
     const data=await User.find({});
-    // console.log(data);
     res.json({success:true,data:data});
     // res.json("hello");
 })
