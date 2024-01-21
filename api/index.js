@@ -51,10 +51,10 @@ app.use(cookieParser());
 
 app.use(cors({
     credentials: true,
-    origin: process.env.CLIENT_URL,
+    origin: [process.env.CLIENT_URL,"https://mern-chat-app.onrender.com"]
 }))
 
-app.get('/test', (req, res) => {
+app.get('/test', (req, res) => { 
     res.json('test ok');
 });
 console.log("Hello ji I am a Index.js file in api folder");
